@@ -235,6 +235,19 @@ impl ValueOwned {
             _ => Err(Error::Sqlite("Cannot convert ValueOwned to &str".into())),
         }
     }
+
+    pub fn into_json(self) -> Result<serde_json::Value, Error> {
+        let slf = match self {
+            ValueOwned::Null => serde_json::Value::Null,
+            ValueOwned::Integer(i) => serde_json::Value::from(i),
+            ValueOwned::Real(r) => serde_json::Value::from(r),
+            ValueOwned::Text(s) => serde_json::Value::String(s),
+            ValueOwned::Blob(b) => {
+                serde_json::from_slice(&b).map_err(|err| Error::Sqlite(err.to_string().into()))?
+            }
+        };
+        Ok(slf)
+    }
 }
 
 impl TryFrom<ValueOwned> for i64 {

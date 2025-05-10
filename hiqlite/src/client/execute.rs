@@ -198,7 +198,7 @@ impl Client {
             crate::Row::Owned(row) => {
                 let mut map = serde_json::Map::with_capacity(row.columns.len());
                 for col in row.columns.into_iter() {
-                    map.insert(col.name, col.value.try_into().unwrap());
+                    map.insert(col.name, col.value.into_json().unwrap());
                 }
                 let value = serde_json::Value::Object(map);
                 serde_json::from_value(value)?
@@ -227,7 +227,7 @@ impl Client {
                 Ok(crate::Row::Owned(row)) => {
                     let mut map = serde_json::Map::with_capacity(row.columns.len());
                     for col in row.columns.into_iter() {
-                        map.insert(col.name, col.value.try_into().unwrap());
+                        map.insert(col.name, col.value.into_json().unwrap());
                     }
                     let value = serde_json::Value::Object(map);
                     serde_json::from_value(value).map_err(Into::into)
