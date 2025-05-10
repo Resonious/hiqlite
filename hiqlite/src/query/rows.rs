@@ -85,15 +85,15 @@ impl RowOwned {
         self.try_get(idx).unwrap()
     }
 
-    /// TODO decide which version to use - this is with remove -> benchmark them!
+    /// NOTE: this used to do swap_remove but I've updated it to fetch instead so that
+    /// I can call this multiple times (need to do this because I don't know the type ahead of time).
     pub fn try_get<T: TryFrom<ValueOwned, Error = crate::Error>>(
         &mut self,
         idx: &str,
     ) -> Result<T, Error> {
         for i in 0..self.columns.len() {
             if self.columns[i].name == idx {
-                // swap_remove is fine because we don't allow access by raw integer index
-                return T::try_from(self.columns.swap_remove(i).value);
+                return T::try_from(self.columns[i].value.clone());
             }
         }
 
