@@ -4,6 +4,7 @@ use crate::query::rows::RowOwned;
 use crate::store::state_machine::sqlite::state_machine::{Query, QueryWrite};
 use crate::{Client, Error, Params, Response};
 use std::borrow::Cow;
+use serde::de::DeserializeOwned;
 use tokio::sync::oneshot;
 
 impl Client {
@@ -177,6 +178,63 @@ impl Client {
         } else {
             rows.swap_remove(0)
         }
+    }
+
+    /// Execute a query on the database that includes a `RETURNING` statement.
+    ///
+    /// Returns a single deserialized row.
+    /// Will throw an error if rows returned is not exactly 1.
+    pub async fn execute_returning_as_one<T, S>(
+        &self,
+        sql: S,
+        params: Params,
+    ) -> Result<T, Error>
+    where
+        S: Into<Cow<'static, str>>,
+        T: DeserializeOwned + Send + 'static,
+    {
+        let row = self.execute_returning_one(sql, params).await?;
+        match row {
+            crate::Row::Owned(row) => {
+                let mut map = serde_json::Map::with_capacity(row.columns.len());
+                for col in row.columns.into_iter() {
+                    map.insert(col.name, col.value.try_into().unwrap());
+                }
+                let value = serde_json::Value::Object(map);
+                serde_json::from_value(value)?
+            }
+            _ => panic!("I think it is only owned here")
+        }
+    }
+
+    /// Execute a query on the database that includes a `RETURNING` statement.
+    ///
+    /// Deserializes returned rows.
+    pub async fn execute_returning_as<T, S>(
+        &self,
+        sql: S,
+        params: Params,
+    ) -> Result<Vec<Result<T, Error>>, Error>
+    where
+        S: Into<Cow<'static, str>>,
+        T: DeserializeOwned + Send + 'static,
+    {
+        let rows = self.execute_returning(sql, params).await?;
+
+        rows.into_iter().map(|row| {
+            match row {
+                Err(e) => Err(e),
+                Ok(crate::Row::Owned(row)) => {
+                    let mut map = serde_json::Map::with_capacity(row.columns.len());
+                    for col in row.columns.into_iter() {
+                        map.insert(col.name, col.value.try_into().unwrap());
+                    }
+                    let value = serde_json::Value::Object(map);
+                    serde_json::from_value(value).map_err(Into::into)
+                }
+                _ => panic!("I think it is only owned here")
+            }
+        }).collect()
     }
 
     #[inline]
