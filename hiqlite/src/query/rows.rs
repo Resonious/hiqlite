@@ -54,6 +54,10 @@ impl RowOwned {
                         ValueOwned::Real(r)
                     } else if let Ok(b) = row.get::<_, Vec<u8>>(i) {
                         ValueOwned::Blob(b)
+                    } else if let Ok(x) = row.get::<_, chrono::NaiveDateTime>(i) {
+                        ValueOwned::Text(x.and_utc().to_rfc3339())
+                    } else if let Ok(x) = row.get::<_, chrono::NaiveDate>(i) {
+                        ValueOwned::Text(x.and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap()).and_utc().to_rfc3339())
                     } else {
                         ValueOwned::Null
                     }
@@ -171,7 +175,8 @@ impl ColumnType {
                     // NATIVE CHARACTER(70)
                     // NVARCHAR(100)
                     // CLOB
-                    } else if ty.contains("CHAR") || ty.contains("CLOB") {
+                    // TIMESTAMP
+                    } else if ty.contains("CHAR") || ty.contains("CLOB") || ty.contains("TIME") {
                         Self::Text
 
                     // .starts_with("RE") already checked

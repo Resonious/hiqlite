@@ -201,7 +201,7 @@ impl Client {
                     map.insert(col.name, col.value.into_json().unwrap());
                 }
                 let value = serde_json::Value::Object(map);
-                serde_json::from_value(value)?
+                serde_json::from_value::<T>(value).map_err(Into::into)
             }
             _ => panic!("I think it is only owned here")
         }
@@ -221,7 +221,7 @@ impl Client {
     {
         let rows = self.execute_returning(sql, params).await?;
 
-        rows.into_iter().map(|row| {
+        Ok(rows.into_iter().map(|row| {
             match row {
                 Err(e) => Err(e),
                 Ok(crate::Row::Owned(row)) => {
@@ -230,11 +230,11 @@ impl Client {
                         map.insert(col.name, col.value.into_json().unwrap());
                     }
                     let value = serde_json::Value::Object(map);
-                    serde_json::from_value(value).map_err(Into::into)
+                    serde_json::from_value::<T>(value).map_err(Into::into)
                 }
                 _ => panic!("I think it is only owned here")
             }
-        }).collect()
+        }).collect())
     }
 
     #[inline]
